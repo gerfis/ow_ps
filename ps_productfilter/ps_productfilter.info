@@ -1,0 +1,4 @@
+name = PS product filter
+description = Filter for PS products.
+core = 7.x
+package = Planshop
