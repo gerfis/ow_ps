@@ -1,0 +1,4 @@
+name = PS Planshop
+description = Planshop general.
+core = 7.x
+package = Planshop

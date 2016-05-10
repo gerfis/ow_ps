@@ -3,5 +3,126 @@
 /* 
  * Produkte suchen und filtern
  */
+
+ 
+ require_once("vocabtools.inc");
+ 
+ 
+  
+ function ps_productfilter_menu() {
+ 	$items = array();
+	
+    $items['catalog/%'] = array(
+        'title' => t('Categories'),
+        'page callback' => 'ps_productfilter_catalog',
+        'page arguments' => array(1),
+        'access arguments' => array('access content'),
+        'type' => MENU_CALLBACK,
+    );
+	
+    $items['catalog'] = array(
+        'title' => t('Categories'),
+        'page callback' => 'ps_productfilter_catalog',
+        'access arguments' => array('access content'),
+        'type' => MENU_CALLBACK,
+    );	
+	
+	
+	return $items;
+ }
+
+ function ps_productfilter_catalog($category) {
+    
+    $output = "";
+    $tid = "";
+    $vid = "2";
+    drupal_set_title(t("Categories"));
+    
+    $sql_products = "SELECT node.created AS node_created, node.nid AS nid
+        FROM {node} node
+        LEFT JOIN {field_data_field_pd_category} field_data_field_pd_category ON node.nid = field_data_field_pd_category.entity_id AND (field_data_field_pd_category.entity_type = 'node' AND field_data_field_pd_category.deleted = '0')
+        WHERE (( (field_data_field_pd_category.field_pd_category_tid = :tid ) )AND(( (node.status = '1') AND (node.type IN  ('product_display')) )))
+        ORDER BY node_created DESC
+        LIMIT 10 OFFSET 0";
+    
+ 	if ($category) {
+ 		drupal_set_title(t("Category") . ": " .$category);
+		$terms = taxonomy_get_term_by_name($category);
+        if (empty($terms)) {
+           drupal_set_message(t('Category not found.'),'error');
+        } else {
+           $term = array_pop($terms);
+           $tid = $term->tid;
+           $vid = $term->vid;
+        }
+        
+        $parents = taxonomy_get_parents_all($tid);
+
+        $output .= "<div id='katalog-breadcrumbs'>";
+        foreach ($parents as $parent) {
+            $breadcrumbs = " / <a href='/catalog/" . $parent->name . "'>"  . $parent->name . "</a>" . $breadcrumbs;  
+        }
+        $output .= "<a href='/catalog'>" . t("All") . "</a>" . $breadcrumbs . "</div>";
+        
+         $sql_category = "SELECT taxonomy_term_data.name AS taxonomy_term_data_name, taxonomy_term_data.vid AS taxonomy_term_data_vid, taxonomy_term_data.tid AS tid, taxonomy_vocabulary.machine_name AS taxonomy_vocabulary_machine_name, taxonomy_term_data.weight AS taxonomy_term_data_weight, 'taxonomy_term' AS field_data_field_bild_taxonomy_term_entity_type
+            FROM {taxonomy_term_data} taxonomy_term_data
+            LEFT JOIN {taxonomy_vocabulary} taxonomy_vocabulary ON taxonomy_term_data.vid = taxonomy_vocabulary.vid
+            LEFT JOIN {taxonomy_term_hierarchy} taxonomy_term_hierarchy ON taxonomy_term_data.tid = taxonomy_term_hierarchy.tid
+            WHERE (( (taxonomy_term_hierarchy.parent = :tid ) )AND(( (taxonomy_vocabulary.machine_name IN  ('categories_plans')) )))
+            ORDER BY taxonomy_term_data_weight ASC";
+            
+        $products = db_query($sql_products,array(":tid" => $tid));
+    
+    
+     	} else {
+        $sql_category = "SELECT taxonomy_term_data.name AS taxonomy_term_data_name, taxonomy_term_data.vid AS taxonomy_term_data_vid, taxonomy_term_data.tid AS tid, taxonomy_vocabulary.machine_name AS taxonomy_vocabulary_machine_name, taxonomy_term_data.weight AS taxonomy_term_data_weight, 'taxonomy_term' AS field_data_field_bild_taxonomy_term_entity_type
+            FROM {taxonomy_term_data} taxonomy_term_data
+            LEFT JOIN {taxonomy_vocabulary} taxonomy_vocabulary ON taxonomy_term_data.vid = taxonomy_vocabulary.vid
+            LEFT JOIN {taxonomy_term_hierarchy} taxonomy_term_hierarchy ON taxonomy_term_data.tid = taxonomy_term_hierarchy.tid
+            WHERE (( (taxonomy_vocabulary.machine_name IN  ('categories_plans')) AND (taxonomy_term_hierarchy.parent = ':tid') ))
+            ORDER BY taxonomy_term_data_weight ASC";
+ 	    
+ 	}
+
+    $categories = db_query($sql_category,array(":tid" => $tid));
+    $output .= "<ul class='katalog-liste'>";
+    foreach ($categories as $item) {
+        $term = taxonomy_term_load($item->tid);
+
+        $allproducts= get_all_nodes_belong_to_taxonomy_hierarchy($item->tid);
+        $productcount = " (" . count($allproducts) . ")";
+        
+        $image = image_style_url('gallery_thumbnail',$term->field_bild['und'][0]['uri']);
+        $output .= "<li class='katalog-item'>";
+        $output .= "<a href='/catalog/" . $item->taxonomy_term_data_name . "'><img src='" . $image . "'</a><br>";
+        $output .= "<a href='/catalog/" . $item->taxonomy_term_data_name . "'>" . $item->taxonomy_term_data_name . $productcount . "</a><br>";
+        $output .= "</li>";
+    }
+    $output .= "</ul><div class='clearfix'></div>";
+
+    if (isset($products)) {
+        if ($products->rowCount()) {
+            /*
+            $output .= "<ul class='katalog-liste'>";
+            foreach ($products as $product) {
+                $node = node_load($product->nid);
+                $alias = drupal_get_path_alias("node/" . $node->nid);
+                $image = image_style_url('gallery_thumbnail',$node->field_product_images['und'][0]['uri']);
+                $output .= "<li class='katalog-item'>";
+                $output .= "<a href='/" . $alias . "'><img src='" . $image . "'></a><br>";
+                $output .= "<a href='/" . $alias . "'>" . $node->title . "</a>";
+                $output .= "</li>"; 
+            }
+            $output .= "</ul><div class='clearfix'></div>"; 
+             */        
+             // $output .= views_embed_view('product_overview','panel_pane_1',$tid);
+             $output .= views_embed_view('katalog_produkte','default',str_replace(" ", "-", $category));
+        } else {
+            // $output .= t("No products found.");
+        }
+    }
+        
+	return $output;	
+ }
  
  
