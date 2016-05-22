@@ -1,0 +1,40 @@
+<?php
+
+// include IBAN test library
+  $path = function_exists('libraries_get_path') ? libraries_get_path('php-iban') : 'sites/all/libraries/php-iban';
+  if (!include($path . '/php-iban.php')) {
+  }
+  
+  
+function ps_general_iban_validate($element, &$form_state) {
+  $iban = $element['und'][0]['value']['#value'];
+  if (!verify_iban($iban)) {
+    form_error($element, t('IBAN is not valid.'));
+  }
+}
+
+function ps_general_bic_validate($element, &$form_state) {
+    $bic = $element['und'][0]['value']['#value'];
+    if(!preg_match("/^([a-zA-Z]){4}([a-zA-Z]){2}([0-9a-zA-Z]){2}([0-9a-zA-Z]{3})?$/", $bic)) {
+        form_error($element, t('BIC is not valid.'));
+    } 
+}
+
+
+function ps_general_form_profile2_edit_profile_verkaeufer_form_alter(&$form, $form_state)  {
+    $form['profile_profile_verkaeufer']['field_profile_iban']['#element_validate'] = array('ps_general_iban_validate');
+    $form['profile_profile_verkaeufer']['field_profile_bic']['#element_validate'] = array('ps_general_bic_validate');
+}
+
+function ps_general_wysiwyg_editor_settings_alter(&$settings, $context){
+    //ckeditor löscht viele Dinge (class, id, etc.)
+    //check if the editor is ckeditor and the version is at least 4.0
+    if($context['profile']->editor=='ckeditor' && $context['editor']['installed version'][0]>3){
+        //add custom settings for ckeditor 4.+ here
+        $settings['allowedContent'] = TRUE;
+        $settings['extraAllowedContent'] = array(
+            'a[download,type,length,href]',
+            'span;ul;li;table;tr;td;style;*[id];*(*);*{*}'
+        );
+    }
+}

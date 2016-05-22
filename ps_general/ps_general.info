@@ -1,0 +1,4 @@
+name = PS General
+description = Planshop general functions.
+core = 7.x
+package = Planshop
